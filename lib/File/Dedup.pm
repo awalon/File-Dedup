@@ -153,7 +153,7 @@ sub _purge_files {
          while ( !grep { $response eq $_ } ('y', 'Y', 'n', 'N', '') );
       }
 
-      _delete_file($file)
+      $self->_delete_file($file)
          if !$self->ask 
          || ($self->ask 
              && ($response eq '' || $response =~ m/^[yY]$/));
@@ -163,10 +163,10 @@ sub _purge_files {
 }
 
 sub _delete_file {
-   my ($file) = @_;
+   my ($self, $file) = @_;
 
    if ( $self->simulate ) {
-      say "rm -rf $file";
+      say "simulate: rm -rf '$file'";
    } else {
       unlink($file)
          or warn "Unable to delete file '$file': $!";
@@ -285,8 +285,8 @@ Optionally dump file name and checksum to stdout.
 =item C<simulate>
 
 Optionally simulate, which files will be removed.
-Output can be used for manual removal. Ex.:
-"rm -rf <file name>"
+Output could be used for manual removal (grep and remove "simulate: "). Ex.:
+"simulate: rm -rf '<file name>'"
 
 =item C<recursive>
 
