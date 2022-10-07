@@ -22,6 +22,8 @@ version 0.007
        directory => '/home/hunter/', 
        recursive => 1, 
        ask       => 0,
+       simulate  => 1,
+       debug     => 0,
     );
     $deduper->dedup;
 
@@ -40,6 +42,21 @@ File::Dedup
     Directory to start searching for duplicates in. \[required\]
 
 - `ask`
+
+    Ask which file have to be removed or keep first file if not defined.
+
+- `debug`
+
+    Optionally dump file name and checksum to stdout.
+
+- `simulate`
+
+    Optionally simulate, which files will be removed.
+    Output could be used for manual removal (grep and remove `simulate: `). Ex.:
+    ```
+    simulate: rm -rf '<file name>'
+    ```
+
 - `recursive`
 
     Recursively search the directory tree for duplicates. \[optional\]
