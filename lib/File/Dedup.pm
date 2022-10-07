@@ -7,7 +7,7 @@ use warnings;
 use Digest::SHA;
 use feature qw(say);
 
-my @VALID_OPTIONS = qw(ask directory group recursive);
+my @VALID_OPTIONS = qw(ask simulate debug directory group recursive);
 sub new {
    my ($class, %opts) = @_;
 
@@ -28,6 +28,13 @@ sub new {
    $opts{ask} = 1
       unless exists $opts{ask} && defined $opts{ask};
    
+   # default to delete mode
+   $opts{simulate} = 0
+      unless exists $opts{simulate} && defined $opts{simulate};
+
+   $opts{debug} = 0
+      unless exists $opts{debug} && defined $opts{debug};
+
    # default to non-recursive
    $opts{recursive} = 0 
       unless exists $opts{recursive} && defined $opts{recursive};
@@ -47,6 +54,14 @@ sub ask {
    return shift->{ask};
 }
 
+sub simulate {
+   return shift->{simulate};
+}
+
+sub debug {
+   return shift->{debug};
+}
+
 sub group {
    return shift->{group};
 }
@@ -55,7 +70,7 @@ sub _file_digest {
    my ($filename) = @_;
 
    open my $fh, '<', $filename
-      or die "$!";
+      or die "Checksum for '$filename' failed with: $!";
    
    my $checksum = Digest::SHA->new->addfile($fh)->hexdigest;
    close($fh);
@@ -71,8 +86,10 @@ sub dedup {
       sub { [ $_[0], _file_digest($_[0]) ] }, 
       sub { shift; @_ } 
    );
-   use Data::Dumper;
-   print Dumper \@results;
+   if ( $self->debug ) { 
+      use Data::Dumper;
+      print Dumper \@results;
+   }
    my %files_by_hashsum;
    foreach my $result ( @results ) {
       my ($filename, $digest) = @$result;
@@ -148,8 +165,12 @@ sub _purge_files {
 sub _delete_file {
    my ($file) = @_;
 
-   unlink($file)
-      or die "Unable to delete file '$file': $!";
+   if ( $self->simulate ) {
+      say "rm -rf $file";
+   } else {
+      unlink($file)
+         or warn "Unable to delete file '$file': $!";
+   }
 }
 
 sub _get_numeric_response {
@@ -204,6 +225,7 @@ sub _dirwalk {
       my @results;
       while ( my $file = readdir $DIR ) {
          next if $file =~ m/^\./; # ignore hidden files, '.', and '..'
+         next if -l "$top/$file" and not -e readlink("$top/$file"); # skip sym-links without valid target
          
          push @results, $self->_dirwalk("$top/$file", $filefunc, $dirfunc);
       }
@@ -239,6 +261,8 @@ A small utility to identify duplicate files in a given directory and optionally 
     directory => '/home/hunter/', 
     recursive => 1, 
     ask       => 0,
+    simulate  => 1,
+    debug     => 0,
  );
  $deduper->dedup;
 
@@ -252,7 +276,17 @@ Directory to start searching for duplicates in. [required]
 
 =item C<ask>
 
+Ask which file have to be removed or keep first file if not defined.
 
+=item C<debug>
+
+Optionally dump file name and checksum to stdout.
+
+=item C<simulate>
+
+Optionally simulate, which files will be removed.
+Output can be used for manual removal. Ex.:
+"rm -rf <file name>"
 
 =item C<recursive>
 
